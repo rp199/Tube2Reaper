@@ -1,0 +1,6 @@
+.DS_Store
+.tools/
+downloads/
+sessions/
+bin/*
+!bin/README.md

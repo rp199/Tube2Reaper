@@ -1,0 +1,8 @@
+local errors=dofile('lua/errors.lua')
+local e=errors.download('WARNING: No title found\nERROR: Sign in to confirm you’re not a bot.')
+assert(e.title=='YouTube needs verification')
+assert(errors.download('ERROR: Private video. Sign in').title=='This video requires sign-in')
+assert(errors.download('ERROR: Video unavailable').title=='Video unavailable')
+assert(errors.download('ffmpeg failed').title=='Could not complete the request')
+assert(errors.download('').help)
+print('Download error classification passed')
