@@ -1,7 +1,9 @@
 -- Runs inside REAPER and exercises the real project/session APIs.
 local script=debug.getinfo(1,'S').source:sub(2)
-local root=assert(script:match('^(.*)[/\\]tests[/\\][^/\\]+$'),'Cannot find repository root')
-local module_root=os.getenv('TUBE2REAPER_MODULE_ROOT') or root
+local module_root=os.getenv('TUBE2REAPER_MODULE_ROOT')
+if not module_root then
+  module_root=assert(script:match('^(.*)[/\\]tests[/\\][^/\\]+$'),'Cannot find repository root')
+end
 local session=dofile(module_root..'/lua/session.lua')
 local work=assert(os.getenv('TUBE2REAPER_CI_ROOT'),'TUBE2REAPER_CI_ROOT is required')
 local result_path=assert(os.getenv('TUBE2REAPER_CI_RESULT'),'TUBE2REAPER_CI_RESULT is required')

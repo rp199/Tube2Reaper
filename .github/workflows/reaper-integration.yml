@@ -61,8 +61,10 @@ jobs:
           $env:TUBE2REAPER_CI_RESULT = $result
           $reaper = Join-Path $env:REAPER_PORTABLE 'reaper.exe'
           $harness = Join-Path $env:GITHUB_WORKSPACE 'tests\reaper_integration.lua'
+          Copy-Item -LiteralPath $harness `
+            -Destination (Join-Path $env:REAPER_PORTABLE 'Scripts\__startup.lua')
           $process = Start-Process -FilePath $reaper `
-            -ArgumentList @('-new', '-nosplash', $harness) -PassThru
+            -ArgumentList @('-new', '-nosplash') -PassThru
           for ($attempt = 0; $attempt -lt 90; $attempt++) {
             if ((Test-Path -LiteralPath $result) -or $process.HasExited) { break }
             Start-Sleep -Seconds 1
@@ -100,7 +102,7 @@ jobs:
           curl --fail --location --retry 3 \
             "https://www.reaper.fm/files/7.x/reaper${REAPER_VERSION_PATH}_universal.dmg" \
             --output "$dmg"
-          hdiutil attach "$dmg" -acceptlicense -nobrowse -readonly -mountpoint "$mount"
+          echo Y | hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount"
           cp -R "$mount/REAPER.app" "$app"
           hdiutil detach "$mount"
           export TUBE2REAPER_CI_ROOT="$work"
