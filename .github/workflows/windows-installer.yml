@@ -1,0 +1,52 @@
+name: Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Install-Windows.cmd"
+      - "Install-Windows.ps1"
+      - "lua/jobs.lua"
+      - "lua/clipboard.lua"
+      - "tests/test_windows.lua"
+      - ".github/workflows/windows-installer.yml"
+  pull_request:
+    paths:
+      - "Install-Windows.cmd"
+      - "Install-Windows.ps1"
+      - "lua/jobs.lua"
+      - "lua/clipboard.lua"
+      - "tests/test_windows.lua"
+      - ".github/workflows/windows-installer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tube2Reaper and helpers
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $resourcePath = Join-Path $env:RUNNER_TEMP "REAPER"
+          .\Install-Windows.ps1 -ReaperResourcePath $resourcePath
+          $installPath = Join-Path $resourcePath "Scripts\Tube2Reaper"
+          $required = @(
+            "Tube2Reaper.lua",
+            "lua\jobs.lua",
+            "bin\yt-dlp.exe",
+            "bin\deno.exe",
+            "bin\ffmpeg.exe",
+            "bin\ffprobe.exe"
+          )
+          foreach ($relativePath in $required) {
+            $path = Join-Path $installPath $relativePath
+            if (-not (Test-Path -LiteralPath $path)) {
+              throw "Installer did not create $path"
+            }
+          }

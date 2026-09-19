@@ -22,20 +22,31 @@ Keep the whole `Tube2Reaper` folder together. A good location is
 
 ### 2. Add YouTube support (optional)
 
-Local files work immediately. For YouTube on macOS with Homebrew, run:
+Local files work immediately. For YouTube on Windows, double-click:
+
+```text
+Install-Windows.cmd
+```
+
+It installs Tube2Reaper and the YouTube helpers for your Windows account. It does
+not require administrator access.
+
+On macOS with Homebrew, run:
 
 ```sh
 brew install yt-dlp deno ffmpeg
 ```
 
-Windows, Linux, and non-Homebrew macOS instructions are in
+Linux, non-Homebrew macOS, and manual Windows instructions are in
 [Manual YouTube helper setup](#manual-youtube-helper-setup) below.
 
 ### 3. Add the script to REAPER
 
 1. Open **Actions → Show action list**.
 2. Select **Main**, then **New action… → Load ReaScript…**.
-3. Choose `Tube2Reaper.lua` from the downloaded folder.
+3. Choose `Tube2Reaper.lua`. On Windows, the installer places it in
+   `%APPDATA%\REAPER\Scripts\Tube2Reaper`. On other systems, select it from the
+   downloaded folder.
 4. Select **Script: Tube2Reaper.lua** and choose **Run/close**.
 
 You can also assign it a keyboard shortcut from the Action List.
@@ -76,6 +87,10 @@ back up the whole session folder to keep the project and media together.
 
 ## Manual YouTube helper setup
 
+The Windows installer normally handles this section for you. Manual setup is
+useful for portable REAPER installations or systems where the installer cannot
+be used.
+
 YouTube support uses
 [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases/latest),
 [Deno](https://github.com/denoland/deno/releases/latest), and
@@ -104,12 +119,24 @@ Linux users can install FFmpeg through their package manager instead, such as
 `sudo apt install ffmpeg`. Clipboard shortcuts on Linux require `wl-clipboard`,
 `xclip`, or `xsel`; normal typing does not.
 
+For a portable Windows installation, run PowerShell from the extracted folder and
+provide that installation's REAPER resource directory:
+
+```powershell
+.\Install-Windows.ps1 -ReaperResourcePath "D:\REAPER"
+```
+
+The Windows installer downloads yt-dlp and Deno from their GitHub releases and a
+Windows FFmpeg build from the BtbN FFmpeg Builds repository linked by FFmpeg's
+download page.
+
 ## Troubleshooting and limitations
 
 | Problem | What to do |
 | --- | --- |
 | A Lua module cannot be opened | Keep the complete `lua/` folder beside `Tube2Reaper.lua`. |
 | A YouTube helper is missing | Check the filenames and their location in `bin/`, or reinstall them with Homebrew. |
+| Windows setup fails | Check your internet connection, then run `Install-Windows.cmd` again. Partial downloads are not installed. |
 | A download fails | Update the helpers and try another video. Some videos are unavailable or require sign-in. |
 | macOS blocks a helper | Approve that executable through the normal macOS security settings. |
 | Tempo analysis pauses | Return to the newly created project tab. |
@@ -124,13 +151,17 @@ Tube2Reaper does not sign in to YouTube or read browser cookies. Closing the
 window does not currently stop a download already in progress. Download only
 material you have permission to use.
 
-macOS is the currently tested platform. Windows and Linux support is included but
-has not yet been tested on those systems.
+macOS is the currently tested REAPER platform. The Windows installer and helper
+launcher have automated tests, but the full workflow has not yet been checked in
+REAPER on Windows. Linux has not yet been tested.
 
 ## Update
 
-Close Tube2Reaper, replace `Tube2Reaper.lua` and the `lua/` folder, then run the
-action again. Homebrew users can update the YouTube helpers with:
+On Windows, extract the latest version and run `Install-Windows.cmd` again.
+
+On other systems, close Tube2Reaper, replace `Tube2Reaper.lua` and the `lua/`
+folder, then run the action again. Homebrew users can update the YouTube helpers
+with:
 
 ```sh
 brew upgrade yt-dlp deno ffmpeg
