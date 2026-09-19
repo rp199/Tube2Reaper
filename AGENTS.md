@@ -137,7 +137,7 @@ As of the current implementation:
 
 - Tested on Apple Silicon macOS with REAPER 7.78.
 - Real REAPER checks: script launch, refreshed UI appearance, local 120 BPM click
-  import/detection, track creation, saving with a relative backing-media path.
+  import/detection, track creation, saving with a relative imported-media path.
 - Standalone YouTube search and simulated audio-format selection passed.
 - Lua tests cover tempo fixtures and the automatic/review/off controller paths.
 - Full YouTube download → conversion → project flow is not yet verified.

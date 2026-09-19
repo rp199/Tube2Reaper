@@ -1,5 +1,5 @@
 -- @description Tube2Reaper - search, import and prepare an audio session
--- @version 0.2.0
+-- @version 0.2.1
 -- @author Tube2Reaper
 local root = debug.getinfo(1, 'S').source:sub(2):match('^(.*)[/\\]')
 local tempo = dofile(root..'/lua/tempo.lua')
@@ -77,7 +77,7 @@ local function import_audio(path, title, session)
   state.completion=nil
   state.session = session or folder('sessions')
   -- Copy in chunks into the session, keeping projects independent of source files.
-  local target = state.session..'/Backing.'..(path:match('%.([%w]+)$') or 'wav')
+  local target = state.session..'/ImportedAudio.'..(path:match('%.([%w]+)$') or 'wav')
   if path ~= target then
     local src = assert(io.open(path, 'rb'), 'Cannot read audio')
     local dest = assert(io.open(target, 'wb'), 'Cannot create session audio')
@@ -163,10 +163,10 @@ local function download(result)
   local ffmpeg=tool('ffmpeg')
   assert(ffmpeg, 'FFmpeg missing. See README.md for YouTube helper setup.')
   for _,v in ipairs({'--ffmpeg-location', ffmpeg, '-f', 'bestaudio/best', '-x',
-    '--audio-format', 'wav', '--no-progress', '-o', session..'/Backing.%(ext)s',
+    '--audio-format', 'wav', '--no-progress', '-o', session..'/ImportedAudio.%(ext)s',
     '--', 'https://www.youtube.com/watch?v='..result.id}) do args[#args+1]=v end
   state.status='Downloading '..result.title..'…'
-  start_job(args, function() import_audio(session..'/Backing.wav', result.title, session) end)
+  start_job(args, function() import_audio(session..'/ImportedAudio.wav', result.title, session) end)
 end
 local function local_file()
   local ok,path=reaper.GetUserFileNameForRead('', 'Choose an audio file', '')

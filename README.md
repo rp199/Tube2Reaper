@@ -15,8 +15,16 @@ or signed release bundle yet.
 
 1. Install [REAPER](https://www.reaper.fm/download.php). REAPER 7.78 on Apple Silicon
    macOS is the tested baseline; compatibility with older versions is not established.
-2. Obtain the whole Tube2Reaper project folder, not just the main Lua file.
-   Put it somewhere permanent and writable. A useful location is
+2. Obtain the whole Tube2Reaper project folder, not just the main Lua file. Either
+   clone the repository:
+
+   ```sh
+   git clone https://github.com/rp199/Tube2Reaper.git
+   ```
+
+   or select **Code → Download ZIP** on the
+   [GitHub repository](https://github.com/rp199/Tube2Reaper) and extract it.
+   Put the resulting folder somewhere permanent and writable. A useful location is
    `Scripts/Tube2Reaper` inside REAPER's resource folder, which you can open with
    **Options → Show REAPER resource path in explorer/finder**.
 3. Keep this structure:
@@ -29,6 +37,8 @@ or signed release bundle yet.
        tempo.lua
        ui.lua
        errors.lua
+       clipboard.lua
+       youtube.lua
      bin/                 # Only needed for YouTube
    ```
 
@@ -49,8 +59,8 @@ installation is needed.
 Choose the instructions for your OS below. Download **executables**, not source
 archives or Python packages. Extract ZIP/TAR archives before copying their contents.
 
-Helper binaries are not tracked in the source repository. A fresh source checkout
-does not include them, even if the original development machine already has them.
+Helper binaries are not tracked in the source repository and are not included in
+a clone or ZIP download.
 
 ### macOS — with Homebrew
 
@@ -167,6 +177,10 @@ place the binaries in `bin/`. Windows behavior still needs on-device testing.
 If using local FFmpeg binaries, also make them executable and verify them as
 `./bin/ffmpeg` and `./bin/ffprobe`. Linux behavior still needs on-device testing.
 
+On Linux, clipboard shortcuts require one of `wl-clipboard` (Wayland), `xclip`,
+or `xsel`. These tools are only needed for copying and pasting in the search field;
+typing, searching, and downloading do not depend on them.
+
 ### Where the script looks
 
 For yt-dlp, Deno, and FFmpeg, discovery checks in this order:
@@ -222,7 +236,7 @@ Open **Options → Show REAPER resource path in explorer/finder** to find:
 Tube2Reaper/
   sessions/<unique-session>/
     Tube2Reaper.rpp
-    Backing.wav             # Local imports retain their original format
+    ImportedAudio.<extension> # WAV from YouTube; original format for local files
     Recordings/
   jobs/<unique-job>/
     stdout
@@ -293,6 +307,11 @@ download-to-project integration and Windows/Linux remain unverified.
 Redistributing helper binaries requires their applicable license notices.
 This repository is not yet a complete portable release bundle.
 
+## License
+
+Tube2Reaper is available under the [MIT License](LICENSE). Third-party helper
+binaries are not included and remain subject to their own licenses.
+
 ## Development
 
 Use Lua 5.4 for command-line checks. End users use REAPER's embedded Lua.
@@ -306,12 +325,7 @@ lua tests/test_youtube.lua
 luac -p Tube2Reaper.lua lua/*.lua
 ```
 
-The original development checkout has a locally compiled interpreter at
-`.tools/downloads/lua-5.4.8/src/lua` and `luac` in the same directory.
-It is not included in a fresh source checkout.
-
-The unused Python prototype and its local environment were removed after the Lua
-architecture was validated. Python is not a project, development, or runtime dependency.
+Python is not a project, development, or runtime dependency.
 
 See [AGENTS.md](AGENTS.md) for architecture and contributor context, and
 [CLAUDE.md](CLAUDE.md) for the Claude entry point.

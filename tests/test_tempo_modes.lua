@@ -6,7 +6,7 @@ for _,case in ipairs({
   {mode='review',bpm=128,expected=135,prompts=1,accessors=1},
   {mode='skip',bpm=128,expected=120,prompts=0,accessors=0},
 }) do
-  local saved,prompts,accessors,bpm=0,0,0,nil
+  local saved,prompts,accessors,bpm,inserted=0,0,0,nil,nil
   local deferred, key=nil,108
   local noop=function() end
   reaper=setmetatable({
@@ -16,6 +16,7 @@ for _,case in ipairs({
     time_precise=function() return 1 end,
     EnumProjects=function() return 1 end,
     GetUserFileNameForRead=function() return true,'test.wav' end,
+    InsertMedia=function(path) inserted=path end,
     GetSelectedMediaItem=function() return 1 end,
     GetActiveTake=function() return 1 end,
     TakeIsMIDI=function() return false end,
@@ -51,6 +52,7 @@ for _,case in ipairs({
   assert(prompts==case.prompts,case.mode..': wrong confirmation behavior')
   assert(accessors==case.accessors,case.mode..': wrong analysis behavior')
   assert(bpm==case.expected,case.mode..': wrong resulting tempo')
+  assert(inserted and inserted:match('/ImportedAudio%.wav$'),case.mode..': imported media filename is not generic')
   dofile=real_dofile
 end
 print('Tempo modes passed: automatic, fallback, review, and analysis off')
