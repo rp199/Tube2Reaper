@@ -1,70 +1,57 @@
 # Tube2Reaper
 
-Prepare an audio session inside REAPER: search for a song, select it, and
-create a project with imported audio, a Recording track, and an estimated tempo.
+Tube2Reaper turns a YouTube video or local audio file into a ready-to-record
+[REAPER](https://www.reaper.fm/) project.
 
-Tube2Reaper is a **Lua ReaScript**, not a VST/audio effect. Local audio works with
-REAPER alone. YouTube support needs three external helpers: yt-dlp, Deno, and
-FFmpeg. No REAPER extensions are required.
+It can:
 
-This is an early version. macOS has been tested; Windows/Linux instructions are
-provided but have not yet been validated on those systems. There is no installer
-or signed release bundle yet.
+- Search YouTube by song or artist, or accept a direct YouTube link.
+- Import a local audio file instead of downloading one.
+- Estimate the tempo automatically, let you review it, or skip tempo detection.
+- Create a new REAPER project tab with the audio and an empty **Recording** track.
+- Save the project and media together so the session is easy to move or back up.
 
-## 1. Install the REAPER script
+Tube2Reaper is a Lua ReaScript, not a VST or audio effect. It has been tested on
+REAPER 7.78 on Apple Silicon macOS. Windows and Linux support is included but has
+not yet been tested on those platforms.
 
-1. Install [REAPER](https://www.reaper.fm/download.php). REAPER 7.78 on Apple Silicon
-   macOS is the tested baseline; compatibility with older versions is not established.
-2. Obtain the whole Tube2Reaper project folder, not just the main Lua file. Either
-   clone the repository:
+## Install
 
-   ```sh
-   git clone https://github.com/rp199/Tube2Reaper.git
-   ```
+### 1. Download Tube2Reaper
 
-   or select **Code → Download ZIP** on the
-   [GitHub repository](https://github.com/rp199/Tube2Reaper) and extract it.
-   Put the resulting folder somewhere permanent and writable. A useful location is
-   `Scripts/Tube2Reaper` inside REAPER's resource folder, which you can open with
-   **Options → Show REAPER resource path in explorer/finder**.
-3. Keep this structure:
+Select **Code → Download ZIP** on this page and extract it, or clone the repository:
 
-   ```text
-   Tube2Reaper/
-     Tube2Reaper.lua
-     lua/
-       jobs.lua
-       tempo.lua
-       ui.lua
-       errors.lua
-       clipboard.lua
-       youtube.lua
-     bin/                 # Only needed for YouTube
-   ```
+```sh
+git clone https://github.com/rp199/Tube2Reaper.git
+```
 
-4. In REAPER, open **Actions → Show action list** and select the **Main** section.
-5. Click **New action… → Load ReaScript…**. Some versions label this
-   **ReaScript: Load**. Select `Tube2Reaper.lua`.
-6. Select **Script: Tube2Reaper.lua** and click **Run/close**.
-   Optionally assign a shortcut with **Add…** under “Shortcuts for selected action.”
+Keep the entire folder in a permanent location. A convenient place is
+`Scripts/Tube2Reaper` inside REAPER's resource folder. In REAPER, choose
+**Options → Show REAPER resource path in explorer/finder** to open that folder.
 
-You can now use **Choose local audio**. Skip to [Using Tube2Reaper](#3-using-tube2reaper)
-if you do not need YouTube.
+The main script and its `lua` folder must stay together:
 
-If the action is already registered against your current checkout, no second
-installation is needed.
+```text
+Tube2Reaper/
+  Tube2Reaper.lua
+  lua/
+    clipboard.lua
+    errors.lua
+    jobs.lua
+    tempo.lua
+    ui.lua
+    youtube.lua
+  bin/                 # YouTube helpers go here when installed manually
+```
 
-## 2. Install the YouTube helpers
+### 2. Install YouTube support (optional)
 
-Choose the instructions for your OS below. Download **executables**, not source
-archives. Extract ZIP/TAR archives before copying their contents.
+Local audio works without additional software. YouTube search and download use
+[yt-dlp](https://github.com/yt-dlp/yt-dlp/releases/latest),
+[Deno](https://github.com/denoland/deno/releases/latest), and
+[FFmpeg](https://ffmpeg.org/download.html).
 
-Helper binaries are not tracked in the source repository and are not included in
-a clone or ZIP download.
-
-### macOS — with Homebrew
-
-If Homebrew is installed and works in Terminal:
+#### macOS with Homebrew
 
 ```sh
 brew install yt-dlp deno ffmpeg
@@ -73,258 +60,142 @@ deno --version
 ffmpeg -version
 ```
 
-The script checks both `/opt/homebrew/bin` (Apple Silicon) and
-`/usr/local/bin` (usual Intel Homebrew location). No files need to be copied to
-`bin/` for this method. Homebrew manages these helpers and any dependencies they
-need; it is a convenience, not a Tube2Reaper requirement.
+Tube2Reaper automatically checks the standard Apple Silicon and Intel Homebrew
+locations. Nothing needs to be copied into `bin/`.
 
-For installing Homebrew itself, follow [Homebrew's instructions](https://brew.sh/).
-For an installation owned by another macOS account, resolve that setup with its
-owner before installing packages; do not change the entire installation's
-ownership just to run this project.
+#### Manual installation on macOS, Windows, or Linux
 
-### macOS — without Homebrew
+Download executables that match your operating system and processor, extract any
+archives, and place the files below in Tube2Reaper's `bin/` folder:
 
-1. From [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases/latest), download
-   `yt-dlp_macos`, rename it to `yt-dlp`, and put it in Tube2Reaper's `bin/`.
-   This standalone build bundles its runtime.
-2. From [Deno releases](https://github.com/denoland/deno/releases/latest), choose
-   the macOS archive for your processor: `aarch64-apple-darwin` for Apple Silicon,
-   or `x86_64-apple-darwin` for Intel. Extract `deno` into `bin/`.
-3. On the [FFmpeg downloads page](https://ffmpeg.org/download.html), follow a
-   macOS binary-build link. Choose a build compatible with your processor.
-   Extract `ffmpeg` and `ffprobe` into `bin/`. Prefer a standalone build;
-   a binary linked to libraries on someone else's Mac is not portable.
-4. In Terminal, enter the following, replacing the example directory with your
-   actual Tube2Reaper folder:
+```text
+macOS/Linux                 Windows
+bin/yt-dlp                  bin/yt-dlp.exe
+bin/deno                    bin/deno.exe
+bin/ffmpeg                  bin/ffmpeg.exe
+bin/ffprobe                 bin/ffprobe.exe
+```
 
-   ```sh
-   cd "/path/to/Tube2Reaper"
-   chmod +x bin/yt-dlp bin/deno bin/ffmpeg bin/ffprobe
-   ./bin/yt-dlp --version
-   ./bin/deno --version
-   ./bin/ffmpeg -version
-   ./bin/ffprobe -version
-   ```
+Useful yt-dlp download names are:
 
-If macOS blocks a downloaded executable, review its source and use the normal
-macOS security approval flow. Do not disable Gatekeeper globally.
+- macOS: `yt-dlp_macos`
+- Windows: `yt-dlp.exe` or `yt-dlp_arm64.exe`
+- Linux: `yt-dlp_linux` or `yt-dlp_linux_aarch64`
 
-### Windows
+Rename the downloaded file to the name shown in the `bin/` layout. On macOS and
+Linux, make the files executable:
 
-1. Download the standalone executable from
-   [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases/latest):
-   `yt-dlp.exe` for x64, or `yt-dlp_arm64.exe` for ARM64. Rename the latter to
-   `yt-dlp.exe`.
-2. Download the matching Windows archive from
-   [Deno releases](https://github.com/denoland/deno/releases/latest) and extract
-   `deno.exe`.
-3. Follow a Windows build link on the
-   [FFmpeg downloads page](https://ffmpeg.org/download.html). Extract
-   `ffmpeg.exe` and `ffprobe.exe` from that build's `bin` directory.
-   If using a shared build, retain its required DLLs alongside the executables.
-4. Place the executables in Tube2Reaper's own `bin` folder:
+```sh
+chmod +x bin/yt-dlp bin/deno bin/ffmpeg bin/ffprobe
+```
 
-   ```text
-   Tube2Reaper/bin/
-     yt-dlp.exe
-     deno.exe
-     ffmpeg.exe
-     ffprobe.exe
-   ```
+Linux users may instead install FFmpeg with their distribution package manager.
+For example:
 
-5. In PowerShell, verify them from the Tube2Reaper directory:
+```sh
+sudo apt install ffmpeg
+```
 
-   ```powershell
-   Set-Location "C:\path\to\Tube2Reaper"
-   .\bin\yt-dlp.exe --version
-   .\bin\deno.exe --version
-   .\bin\ffmpeg.exe -version
-   .\bin\ffprobe.exe -version
-   ```
+On Linux, search-field clipboard shortcuts also require `wl-clipboard`, `xclip`,
+or `xsel`. Normal typing does not require any of them.
 
-Tube2Reaper launches helpers through `powershell.exe`. Installation only through
-winget or a global PATH entry is not sufficient for the current helper discovery:
-place the binaries in `bin/`. Windows behavior still needs on-device testing.
+### 3. Add Tube2Reaper to REAPER
 
-### Linux
+1. Open **Actions → Show action list** in REAPER.
+2. Select the **Main** section.
+3. Choose **New action… → Load ReaScript…**. Some REAPER versions label this
+   **ReaScript: Load**.
+4. Select `Tube2Reaper.lua` from the downloaded folder.
+5. Select **Script: Tube2Reaper.lua** and choose **Run/close**.
 
-1. Download the standalone build matching your processor/libc from
-   [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases/latest).
-   Typical glibc systems use `yt-dlp_linux` (x86_64) or
-   `yt-dlp_linux_aarch64` (ARM64). Rename it to `yt-dlp` and place it in `bin/`.
-   Choose the platform-specific standalone build, not the plain download named
-   `yt-dlp`.
-2. Download the matching Linux archive from
-   [Deno releases](https://github.com/denoland/deno/releases/latest), extract
-   `deno`, and place it in `bin/`. Confirm that the build supports your distribution.
-3. Install FFmpeg through your distribution package manager, or place compatible
-   standalone `ffmpeg` and `ffprobe` binaries in `bin/`. For Debian/Ubuntu:
+You can optionally assign a keyboard shortcut using **Add…** under “Shortcuts for
+selected action.”
 
-   ```sh
-   sudo apt install ffmpeg
-   ```
+## Use
 
-4. From the Tube2Reaper directory:
+1. Run **Script: Tube2Reaper.lua** from REAPER's Action List.
+2. Choose a tempo mode:
+   - **Automatic** estimates the BPM and applies it immediately.
+   - **Review BPM** estimates the BPM and lets you edit it before saving.
+   - **Off** skips analysis and leaves the project at 120 BPM.
+3. Enter a song, artist, or direct YouTube link and press **Enter** or select
+   **Search**. To use an existing file, select **Choose local audio** instead.
+4. Select a search result to download it. Select **Open** to check the video in
+   your browser first.
+5. Tube2Reaper creates and saves a new project tab. Your existing projects remain
+   open.
+6. Choose an input, add any effects you want, and arm the **Recording** track.
 
-   ```sh
-   chmod +x bin/yt-dlp bin/deno
-   ./bin/yt-dlp --version
-   ./bin/deno --version
-   ffmpeg -version
-   ffprobe -version
-   ```
+The search field supports normal cursor movement, text selection, and clipboard
+shortcuts. When the field is not active, `S` focuses search and `L` opens the local
+audio picker.
 
-If using local FFmpeg binaries, also make them executable and verify them as
-`./bin/ffmpeg` and `./bin/ffprobe`. Linux behavior still needs on-device testing.
+## How it works
 
-On Linux, clipboard shortcuts require one of `wl-clipboard` (Wayland), `xclip`,
-or `xsel`. These tools are only needed for copying and pasting in the search field;
-typing, searching, and downloading do not depend on them.
+For YouTube, Tube2Reaper asks yt-dlp for search results and downloads the best
+available audio from the selected video. FFmpeg decodes it to WAV; this avoids an
+additional lossy encoding step, but it cannot restore quality already removed by
+YouTube.
 
-### Where the script looks
+Tube2Reaper then:
 
-For yt-dlp, Deno, and FFmpeg, discovery checks in this order:
+1. Creates a new project tab without closing or replacing your current project.
+2. Copies the audio into a new self-contained session folder.
+3. Adds the audio to one track and creates an empty **Recording** track.
+4. Analyzes up to the first 90 seconds when tempo detection is enabled.
+5. Applies a whole-number BPM and saves the REAPER project with relative media
+   references.
 
-1. `bin/` alongside `Tube2Reaper.lua` (recommended for a portable folder).
-2. `.tools/bin/` in the same folder (development fallback).
-3. `/opt/homebrew/bin`, `/usr/local/bin`, then `/usr/bin`.
+The imported item is time-based, so changing the project tempo does not stretch
+the audio automatically. Tempo estimation works best with a clear, steady beat;
+intros, live drums, tempo changes, and half/double-time interpretations can make
+the estimate less reliable.
 
-Windows executable names use `.exe` in the first two locations. The script does
-not search arbitrary PATH entries. A stale binary in `bin/` takes precedence
-over a newer Homebrew installation. Keep ffprobe beside ffmpeg for yt-dlp's
-post-processing; ffprobe is not separately located by Tube2Reaper.
+## Saved sessions
 
-The three helpers and their purposes are documented upstream:
-[yt-dlp dependencies](https://github.com/yt-dlp/yt-dlp#dependencies),
-[Deno installation](https://docs.deno.com/runtime/getting_started/installation/),
-[FFmpeg downloads](https://ffmpeg.org/download.html).
-
-## 3. Using Tube2Reaper
-
-1. Open the Tube2Reaper action.
-2. Choose a tempo mode; the choice is remembered:
-   - **Automatic** (default): estimate BPM and save without a confirmation.
-   - **Review BPM**: estimate BPM, then let you edit it before saving.
-   - **Off**: skip analysis and save at 120 BPM.
-   Detected and manually entered tempos are rounded to a whole BPM before being
-   applied to the REAPER project.
-3. Type a song/artist in the inline **Search YouTube** field and press **Enter**
-   or click **Search**. You can also paste a YouTube video/Shorts URL directly;
-   it resolves that video rather than running a text search. Alternatively, click
-   **Choose local audio**.
-   The field supports arrow keys, Home/End, Backspace/Delete, and Cmd/Ctrl+A.
-   Escape leaves the field; `S` focuses it and `L` opens local audio when you
-   are not typing in the field. These shortcuts require the window to have focus.
-4. For YouTube, click a search result. Downloading starts immediately; no further
-   selection dialog appears. Use **Open** to inspect a result on YouTube without
-   downloading it; Tube2Reaper confirms the OS browser command succeeded before
-   showing “Opened video in your browser.” Scroll the results if necessary.
-5. Tube2Reaper creates a new project tab with the imported audio and an empty
-   **Recording** track, then saves it. Existing project tabs remain open.
-6. Select your recording input, add your preferred effects, and arm the Recording track.
-
-If automatic detection is inconclusive, the session saves at 120 BPM and the
-status bar explains why. Cancelling the Review BPM dialog also leaves 120 BPM.
-The imported item is time-based so changing project tempo does not stretch it.
-Download only material you have permission to use.
-
-## Sessions, portability, and updates
-
-Open **Options → Show REAPER resource path in explorer/finder** to find:
+Sessions are stored inside REAPER's resource folder:
 
 ```text
 Tube2Reaper/
   sessions/<unique-session>/
     Tube2Reaper.rpp
-    ImportedAudio.<extension> # WAV from YouTube; original format for local files
+    ImportedAudio.<extension>
     Recordings/
-  jobs/<unique-job>/
-    stdout
-    stderr
-    done
 ```
 
-Move the **entire session folder** to another computer, not just the RPP.
-Projects save imported media references relative to the session folder.
-Helper executables are OS/processor-specific: replace them when moving the
-Tube2Reaper tool itself to another platform. Homebrew FFmpeg binaries may depend
-on Homebrew libraries and should not simply be copied to another Mac.
-
-To update Tube2Reaper, close its window, update `Tube2Reaper.lua` and `lua/` in
-place, then run the action again. If you move the installation, load the script
-from its new location in the Actions list.
-
-For standalone yt-dlp, run `./bin/yt-dlp -U` (Windows: `.\bin\yt-dlp.exe -U`).
-Replace Deno/FFmpeg from their official download sources as needed. Homebrew users
-can run `brew upgrade yt-dlp deno ffmpeg`. No update happens automatically.
+YouTube audio is saved as WAV. Local audio keeps its original format. Move or back
+up the entire session folder so the project and its media stay together.
 
 ## Troubleshooting
 
-| Symptom | What to check |
+| Problem | What to check |
 | --- | --- |
-| Cannot open a Lua module | Keep the complete `lua/` folder beside the main script. |
-| YouTube helper missing | Verify the executable name and folder in “Where the script looks.” |
-| FFmpeg missing | Install the FFmpeg executable and verify it with `ffmpeg -version`. |
-| Permission denied / cannot execute | Check execute permissions on Unix, OS approval, architecture, and dependent libraries. Run the version commands above. |
-| Search works but downloading fails | Update yt-dlp, verify Deno and FFmpeg/ffprobe, and inspect the newest job's `stderr`. Some videos require login or are unavailable; the UI does not currently handle sign-in. |
-| Old behavior after editing files | Close the Tube2Reaper window and run the action again. |
-| Tempo analysis pauses | Switch back to the newly created project tab. |
-| BPM sounds half/double speed | Use Review BPM or edit the project tempo in REAPER. |
+| A Lua module cannot be opened | Keep the complete `lua/` folder beside `Tube2Reaper.lua`. |
+| A YouTube helper is missing | Verify the helper names and their location in `bin/`, or reinstall them with Homebrew. |
+| Search works but download fails | Update yt-dlp, check FFmpeg and Deno, and try another video. Some videos are unavailable or require a signed-in session. |
+| macOS blocks a helper | Approve that executable through the normal macOS security flow. Do not disable Gatekeeper globally. |
+| Tempo analysis pauses | Return to the newly created Tube2Reaper project tab. |
+| BPM sounds half or double the correct speed | Use **Review BPM** or edit the project tempo in REAPER. |
+| Changes do not appear after updating files | Close the Tube2Reaper window and run the action again. |
 
-## Current limitations and verification
+Tube2Reaper does not sign in to YouTube or read browser cookies. Closing its window
+does not currently stop a download already in progress. Download only material
+you have permission to use.
 
-### YouTube asks to confirm you are not a bot
+## Update
 
-This is a YouTube download restriction, not a tempo or REAPER problem. Searching
-may succeed while fetching the actual audio is blocked. Tube2Reaper shows an
-inline explanation; **Details** opens the downloader output and log location in
-REAPER's console. Updating yt-dlp may help with extraction changes, but does not
-guarantee that YouTube will allow the request.
+Close Tube2Reaper, replace `Tube2Reaper.lua` and the `lua/` folder with the newer
+versions, then run the action again. If using Homebrew, update the YouTube helpers
+with:
 
-You can choose another result or import a local audio file. For authenticated
-downloads, yt-dlp supports browser cookies as described in its
-[official cookie instructions](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp).
-Tube2Reaper does not currently expose authentication controls or read browser
-cookies. Signing in in a browser alone does not authenticate this script.
-An opt-in browser-session integration would be a separate feature. Never paste
-cookies into an issue or commit them to this project.
+```sh
+brew upgrade yt-dlp deno ffmpeg
+```
 
-### Other limitations
-
-Tempo estimation uses onset-energy autocorrelation over up to the first 90
-seconds. Intros, live drums, and half/double tempo can confuse it. Automatic
-downbeat alignment and variable tempo maps are not implemented.
-
-Closing the window does not stop an active download. After ten minutes, the UI
-stops waiting, but the helper may still run. Logs remain in the resource folder.
-
-Verified on REAPER 7.78/macOS: launching and inspecting the UI, local click-track
-import, 120 BPM detection, imported/recording track creation, and saving relative
-media paths. Standalone YouTube search and audio-format selection were tested.
-The automatic/review/off branches have mocked controller tests. Full YouTube
-download-to-project integration and Windows/Linux remain unverified.
-
-Redistributing helper binaries requires their applicable license notices.
-This repository is not yet a complete portable release bundle.
+For manually installed helpers, replace them with current releases from their
+official download pages.
 
 ## License
 
 Tube2Reaper is available under the [MIT License](LICENSE). Third-party helper
-binaries are not included and remain subject to their own licenses.
-
-## Development
-
-Use Lua 5.4 for command-line checks. End users use REAPER's embedded Lua.
-
-```sh
-lua tests/test_lua.lua
-lua tests/test_tempo_modes.lua
-lua tests/test_search_field.lua
-lua tests/test_errors.lua
-lua tests/test_youtube.lua
-luac -p Tube2Reaper.lua lua/*.lua
-```
-
-See [AGENTS.md](AGENTS.md) for architecture and contributor context, and
-[CLAUDE.md](CLAUDE.md) for the Claude entry point.
+programs are not included and use their own licenses.
