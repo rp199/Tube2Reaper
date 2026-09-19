@@ -55,8 +55,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path $work | Out-Null
           $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
           $ini = @('[REAPER]', 'lastproject=', '[verchk]', "lastt=$now", '[audioconfig]', 'mode=0')
-          Set-Content -LiteralPath (Join-Path $env:REAPER_PORTABLE 'reaper.ini') `
-            -Value $ini -Encoding ASCII
+          $resourcePaths = @($env:REAPER_PORTABLE, (Join-Path $env:APPDATA 'REAPER'))
+          foreach ($resourcePath in $resourcePaths) {
+            New-Item -ItemType Directory -Force -Path (Join-Path $resourcePath 'Scripts') | Out-Null
+            Set-Content -LiteralPath (Join-Path $resourcePath 'reaper.ini') `
+              -Value $ini -Encoding ASCII
+          }
           $env:TUBE2REAPER_MODULE_ROOT = $moduleRoot
           $env:TUBE2REAPER_CI_ROOT = $work
           $env:TUBE2REAPER_CI_RESULT = $result
@@ -71,12 +75,19 @@ jobs:
               & taskkill.exe /F /IM reaper.exe /T 2>$null | Out-Null
             }
           }
-          Copy-Item -LiteralPath $harness `
-            -Destination (Join-Path $env:REAPER_PORTABLE 'Scripts\__startup.lua')
+          foreach ($resourcePath in $resourcePaths) {
+            Copy-Item -LiteralPath $harness `
+              -Destination (Join-Path $resourcePath 'Scripts\__startup.lua')
+          }
           $process = Start-Process -FilePath $reaper `
             -ArgumentList @('-new', '-nosplash') -PassThru
+          $keyboard = New-Object -ComObject WScript.Shell
           for ($attempt = 0; $attempt -lt 90; $attempt++) {
             if ((Test-Path -LiteralPath $result) -or $process.HasExited) { break }
+            if (($attempt % 5) -eq 0 -and $keyboard.AppActivate($process.Id)) {
+              Start-Sleep -Milliseconds 250
+              $keyboard.SendKeys('{ENTER}')
+            }
             Start-Sleep -Seconds 1
           }
           if (-not (Test-Path -LiteralPath $result)) {
@@ -118,6 +129,11 @@ jobs:
           now=$(date +%s)
           printf '[REAPER]\nlastproject=\n[verchk]\nlastt=%s\n[audioconfig]\nmode=0\n' "$now" \
             >"$work/reaper.ini"
+          resource="$HOME/Library/Application Support/REAPER"
+          mkdir -p "$resource/Scripts"
+          cp "$GITHUB_WORKSPACE/tests/reaper_integration.lua" "$resource/Scripts/__startup.lua"
+          cp "$work/reaper.ini" "$resource/reaper.ini"
+          export TUBE2REAPER_MODULE_ROOT="$GITHUB_WORKSPACE"
           export TUBE2REAPER_CI_ROOT="$work"
           export TUBE2REAPER_CI_RESULT="$result"
           "$app/Contents/MacOS/REAPER" \
@@ -134,11 +150,12 @@ jobs:
           wait "$warmup_pid" 2>/dev/null || true
           "$app/Contents/MacOS/REAPER" \
             -newinst -cfgfile "$work/reaper.ini" -new -nosplash \
-            "$GITHUB_WORKSPACE/tests/reaper_integration.lua" \
             >"$work/reaper.log" 2>&1 &
           reaper_pid=$!
           for _ in {1..90}; do
             if [[ -f "$result" ]] || ! kill -0 "$reaper_pid" 2>/dev/null; then break; fi
+            osascript -e 'tell application "REAPER" to activate' \
+              -e 'tell application "System Events" to key code 36' >/dev/null 2>&1 || true
             sleep 1
           done
           if [[ ! -f "$result" ]]; then
