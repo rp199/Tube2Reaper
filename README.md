@@ -5,7 +5,7 @@ create a project with imported audio, a Recording track, and an estimated tempo.
 
 Tube2Reaper is a **Lua ReaScript**, not a VST/audio effect. Local audio works with
 REAPER alone. YouTube support needs three external helpers: yt-dlp, Deno, and
-FFmpeg. You do **not** need to install Python, Lua, SWS, or ReaImGui to use it.
+FFmpeg. No REAPER extensions are required.
 
 This is an early version. macOS has been tested; Windows/Linux instructions are
 provided but have not yet been validated on those systems. There is no installer
@@ -57,7 +57,7 @@ installation is needed.
 ## 2. Install the YouTube helpers
 
 Choose the instructions for your OS below. Download **executables**, not source
-archives or Python packages. Extract ZIP/TAR archives before copying their contents.
+archives. Extract ZIP/TAR archives before copying their contents.
 
 Helper binaries are not tracked in the source repository and are not included in
 a clone or ZIP download.
@@ -153,7 +153,8 @@ place the binaries in `bin/`. Windows behavior still needs on-device testing.
    [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases/latest).
    Typical glibc systems use `yt-dlp_linux` (x86_64) or
    `yt-dlp_linux_aarch64` (ARM64). Rename it to `yt-dlp` and place it in `bin/`.
-   **Do not choose the plain download named `yt-dlp`**: that version needs Python.
+   Choose the platform-specific standalone build, not the plain download named
+   `yt-dlp`.
 2. Download the matching Linux archive from
    [Deno releases](https://github.com/denoland/deno/releases/latest), extract
    `deno`, and place it in `bin/`. Confirm that the build supports your distribution.
@@ -264,7 +265,7 @@ can run `brew upgrade yt-dlp deno ffmpeg`. No update happens automatically.
 | --- | --- |
 | Cannot open a Lua module | Keep the complete `lua/` folder beside the main script. |
 | YouTube helper missing | Verify the executable name and folder in “Where the script looks.” |
-| FFmpeg missing | Install the executable, not the Python package named ffmpeg. |
+| FFmpeg missing | Install the FFmpeg executable and verify it with `ffmpeg -version`. |
 | Permission denied / cannot execute | Check execute permissions on Unix, OS approval, architecture, and dependent libraries. Run the version commands above. |
 | Search works but downloading fails | Update yt-dlp, verify Deno and FFmpeg/ffprobe, and inspect the newest job's `stderr`. Some videos require login or are unavailable; the UI does not currently handle sign-in. |
 | Old behavior after editing files | Close the Tube2Reaper window and run the action again. |
@@ -324,8 +325,6 @@ lua tests/test_errors.lua
 lua tests/test_youtube.lua
 luac -p Tube2Reaper.lua lua/*.lua
 ```
-
-Python is not a project, development, or runtime dependency.
 
 See [AGENTS.md](AGENTS.md) for architecture and contributor context, and
 [CLAUDE.md](CLAUDE.md) for the Claude entry point.
