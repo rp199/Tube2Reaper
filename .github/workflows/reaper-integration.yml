@@ -1,0 +1,128 @@
+name: REAPER integration
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Tube2Reaper.lua"
+      - "lua/session.lua"
+      - "tests/reaper_integration.lua"
+      - "Install-Windows.ps1"
+      - ".github/workflows/reaper-integration.yml"
+  pull_request:
+    paths:
+      - "Tube2Reaper.lua"
+      - "lua/session.lua"
+      - "tests/reaper_integration.lua"
+      - "Install-Windows.ps1"
+      - ".github/workflows/reaper-integration.yml"
+
+permissions:
+  contents: read
+
+env:
+  REAPER_VERSION_PATH: "780"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install portable REAPER
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path $env:RUNNER_TEMP 'reaper-install.exe'
+          $portable = Join-Path $env:RUNNER_TEMP 'REAPER-portable'
+          Invoke-WebRequest -UseBasicParsing `
+            "https://www.reaper.fm/files/7.x/reaper$($env:REAPER_VERSION_PATH)_x64-install.exe" `
+            -OutFile $installer
+          New-Item -ItemType Directory -Force -Path $portable | Out-Null
+          $install = Start-Process -FilePath $installer `
+            -ArgumentList @('/S', '/PORTABLE', "/D=$portable") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "REAPER installer failed: $($install.ExitCode)" }
+          if (-not (Test-Path (Join-Path $portable 'reaper.exe'))) { throw 'reaper.exe was not installed' }
+          "REAPER_PORTABLE=$portable" | Out-File $env:GITHUB_ENV -Append
+      - name: Install Tube2Reaper and run the harness
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\Install-Windows.ps1 -ReaperResourcePath $env:REAPER_PORTABLE -SkipHelpers
+          $moduleRoot = Join-Path $env:REAPER_PORTABLE 'Scripts\Tube2Reaper'
+          $work = Join-Path $env:RUNNER_TEMP 'tube2reaper-integration'
+          $result = Join-Path $work 'result.txt'
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          $ini = @('[REAPER]', 'lastproject=', '[audioconfig]', 'mode=0')
+          Set-Content -LiteralPath (Join-Path $env:REAPER_PORTABLE 'reaper.ini') `
+            -Value $ini -Encoding ASCII
+          $env:TUBE2REAPER_MODULE_ROOT = $moduleRoot
+          $env:TUBE2REAPER_CI_ROOT = $work
+          $env:TUBE2REAPER_CI_RESULT = $result
+          $reaper = Join-Path $env:REAPER_PORTABLE 'reaper.exe'
+          $harness = Join-Path $env:GITHUB_WORKSPACE 'tests\reaper_integration.lua'
+          $process = Start-Process -FilePath $reaper `
+            -ArgumentList @('-new', '-nosplash', $harness) -PassThru
+          if (-not $process.WaitForExit(90000)) {
+            Stop-Process -Id $process.Id -Force
+            throw 'REAPER integration test timed out'
+          }
+          if (-not (Test-Path -LiteralPath $result)) { throw 'REAPER did not write a test result' }
+          $message = Get-Content -LiteralPath $result -Raw
+          Write-Host $message
+          if (-not $message.StartsWith('PASS ')) { throw $message }
+          if (-not (Test-Path (Join-Path $work 'session\Tube2Reaper.rpp'))) {
+            throw 'REAPER did not save the project'
+          }
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install REAPER and run the harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg="$RUNNER_TEMP/reaper.dmg"
+          mount="$RUNNER_TEMP/reaper-mount"
+          app="$RUNNER_TEMP/REAPER.app"
+          work="$RUNNER_TEMP/tube2reaper-integration"
+          result="$work/result.txt"
+          mkdir -p "$mount" "$work"
+          curl --fail --location --retry 3 \
+            "https://www.reaper.fm/files/7.x/reaper${REAPER_VERSION_PATH}_universal.dmg" \
+            --output "$dmg"
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount"
+          cp -R "$mount/REAPER.app" "$app"
+          hdiutil detach "$mount"
+          export TUBE2REAPER_CI_ROOT="$work"
+          export TUBE2REAPER_CI_RESULT="$result"
+          "$app/Contents/MacOS/REAPER" \
+            -newinst -cfgfile "$work/reaper.ini" -new -nosplash \
+            "$GITHUB_WORKSPACE/tests/reaper_integration.lua" \
+            >"$work/reaper.log" 2>&1 &
+          reaper_pid=$!
+          for _ in {1..90}; do
+            if [[ -f "$result" ]] || ! kill -0 "$reaper_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [[ ! -f "$result" ]]; then
+            kill "$reaper_pid" 2>/dev/null || true
+            cat "$work/reaper.log"
+            exit 1
+          fi
+          for _ in {1..15}; do
+            if ! kill -0 "$reaper_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$reaper_pid" 2>/dev/null; then
+            kill "$reaper_pid" 2>/dev/null || true
+            echo 'REAPER did not exit after the harness finished'
+            exit 1
+          fi
+          wait "$reaper_pid" || true
+          message=$(cat "$result")
+          echo "$message"
+          [[ "$message" == PASS\ * ]]
+          test -f "$work/session/Tube2Reaper.rpp"

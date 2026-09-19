@@ -1,5 +1,5 @@
 -- @description Tube2Reaper - search, import and prepare an audio session
--- @version 0.2.1
+-- @version 0.3.0
 -- @author Tube2Reaper
 local root = debug.getinfo(1, 'S').source:sub(2):match('^(.*)[/\\]')
 local tempo = dofile(root..'/lua/tempo.lua')
@@ -8,6 +8,7 @@ local ui = dofile(root..'/lua/ui.lua')
 local errors = dofile(root..'/lua/errors.lua')
 local clipboard = dofile(root..'/lua/clipboard.lua')
 local youtube = dofile(root..'/lua/youtube.lua')
+local session_builder = dofile(root..'/lua/session.lua')
 local win = reaper.GetOS():match('Win') ~= nil
 local suffix = win and '.exe' or ''
 local state = {status='Search YouTube or choose a local audio file.', results={}}
@@ -43,7 +44,7 @@ local function start_job(args, callback)
   state.job = jobs.start(folder('jobs'), args); state.callback = callback
 end
 local function save_session()
-  reaper.Main_SaveProjectEx(state.project, state.session..'/Tube2Reaper.rpp', 8)
+  session_builder.save(reaper,state.project,state.session)
   state.status = state.completion or 'Session saved. Ready to record.'
   state.analysis = nil
 end
@@ -72,37 +73,13 @@ local function finish_analysis(bpm, confidence)
   end
   save_session()
 end
-local function import_audio(path, title, session)
+local function import_audio(path, title, session_directory)
   state.error=nil
   state.completion=nil
-  state.session = session or folder('sessions')
-  -- Copy in chunks into the session, keeping projects independent of source files.
-  local target = state.session..'/ImportedAudio.'..(path:match('%.([%w]+)$') or 'wav')
-  if path ~= target then
-    local src = assert(io.open(path, 'rb'), 'Cannot read audio')
-    local dest = assert(io.open(target, 'wb'), 'Cannot create session audio')
-    while true do local chunk=src:read(1024*1024); if not chunk then break end; assert(dest:write(chunk)) end
-    src:close(); dest:close()
-  end
-  reaper.Main_OnCommand(40859, 0) -- New project tab, preserving existing projects.
-  state.project = reaper.EnumProjects(-1, '')
-  reaper.RecursiveCreateDirectory(state.session..'/Recordings', 0)
-  reaper.GetSetProjectInfo_String(state.project, 'RECORD_PATH', 'Recordings', true)
-  reaper.SetCurrentBPM(state.project, 120, false)
-  reaper.SetEditCurPos(0, false, false)
-  reaper.InsertMedia(target, 1)
-  local item = reaper.GetSelectedMediaItem(state.project, 0)
-  assert(item, 'REAPER could not import this audio format.')
-  reaper.SetMediaItemInfo_Value(item, 'C_BEATATTACHMODE', 0)
-  local take = reaper.GetActiveTake(item)
-  assert(take and not reaper.TakeIsMIDI(take), 'Choose an audio file.')
-  local track = reaper.GetMediaItemTrack(item)
-  reaper.GetSetMediaTrackInfo_String(track, 'P_NAME', title or 'Imported audio', true)
-  reaper.InsertTrackAtIndex(reaper.CountTracks(state.project), true)
-  local recording = reaper.GetTrack(state.project, reaper.CountTracks(state.project)-1)
-  reaper.GetSetMediaTrackInfo_String(recording, 'P_NAME', 'Recording', true)
-  reaper.SetOnlyTrackSelected(recording)
-  reaper.TrackList_AdjustWindows(false); reaper.UpdateArrange()
+  state.session = session_directory or folder('sessions')
+  local created=session_builder.create(reaper,path,title,state.session)
+  state.project=created.project
+  local take=created.take
   if state.tempo_mode == 'skip' then
     state.completion='Session saved at 120 BPM. Tempo detection is off.'
     save_session(); return

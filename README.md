@@ -1,5 +1,7 @@
 # Tube2Reaper
 
+[![REAPER integration](https://github.com/rp199/Tube2Reaper/actions/workflows/reaper-integration.yml/badge.svg)](https://github.com/rp199/Tube2Reaper/actions/workflows/reaper-integration.yml)
+
 Turn a YouTube video or local audio file into a ready-to-record
 [REAPER](https://www.reaper.fm/) project.
 
@@ -151,9 +153,8 @@ Tube2Reaper does not sign in to YouTube or read browser cookies. Closing the
 window does not currently stop a download already in progress. Download only
 material you have permission to use.
 
-macOS is the currently tested REAPER platform. The Windows installer and helper
-launcher have automated tests, but the full workflow has not yet been checked in
-REAPER on Windows. Linux has not yet been tested.
+Real REAPER project creation is automatically tested on macOS and Windows.
+Linux has not yet been tested.
 
 ## Update
 

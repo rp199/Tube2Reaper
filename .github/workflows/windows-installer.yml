@@ -8,6 +8,7 @@ on:
       - "Install-Windows.ps1"
       - "lua/jobs.lua"
       - "lua/clipboard.lua"
+      - "lua/session.lua"
       - "tests/test_windows.lua"
       - ".github/workflows/windows-installer.yml"
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "Install-Windows.ps1"
       - "lua/jobs.lua"
       - "lua/clipboard.lua"
+      - "lua/session.lua"
       - "tests/test_windows.lua"
       - ".github/workflows/windows-installer.yml"
 
@@ -39,6 +41,7 @@ jobs:
           $required = @(
             "Tube2Reaper.lua",
             "lua\jobs.lua",
+            "lua\session.lua",
             "bin\yt-dlp.exe",
             "bin\deno.exe",
             "bin\ffmpeg.exe",
