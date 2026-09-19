@@ -53,7 +53,8 @@ jobs:
           $work = Join-Path $env:RUNNER_TEMP 'tube2reaper-integration'
           $result = Join-Path $work 'result.txt'
           New-Item -ItemType Directory -Force -Path $work | Out-Null
-          $ini = @('[REAPER]', 'lastproject=', '[audioconfig]', 'mode=0')
+          $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+          $ini = @('[REAPER]', 'lastproject=', '[verchk]', "lastt=$now", '[audioconfig]', 'mode=0')
           Set-Content -LiteralPath (Join-Path $env:REAPER_PORTABLE 'reaper.ini') `
             -Value $ini -Encoding ASCII
           $env:TUBE2REAPER_MODULE_ROOT = $moduleRoot
@@ -61,6 +62,15 @@ jobs:
           $env:TUBE2REAPER_CI_RESULT = $result
           $reaper = Join-Path $env:REAPER_PORTABLE 'reaper.exe'
           $harness = Join-Path $env:GITHUB_WORKSPACE 'tests\reaper_integration.lua'
+          $warmup = Start-Process -FilePath $reaper `
+            -ArgumentList @('-new', '-nosplash', '-noactivate') -PassThru
+          Start-Sleep -Seconds 20
+          if (-not $warmup.HasExited) {
+            & taskkill.exe /IM reaper.exe /T 2>$null | Out-Null
+            if (-not $warmup.WaitForExit(10000)) {
+              & taskkill.exe /F /IM reaper.exe /T 2>$null | Out-Null
+            }
+          }
           Copy-Item -LiteralPath $harness `
             -Destination (Join-Path $env:REAPER_PORTABLE 'Scripts\__startup.lua')
           $process = Start-Process -FilePath $reaper `
@@ -105,8 +115,23 @@ jobs:
           echo Y | hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount"
           cp -R "$mount/REAPER.app" "$app"
           hdiutil detach "$mount"
+          now=$(date +%s)
+          printf '[REAPER]\nlastproject=\n[verchk]\nlastt=%s\n[audioconfig]\nmode=0\n' "$now" \
+            >"$work/reaper.ini"
           export TUBE2REAPER_CI_ROOT="$work"
           export TUBE2REAPER_CI_RESULT="$result"
+          "$app/Contents/MacOS/REAPER" \
+            -newinst -cfgfile "$work/reaper.ini" -new -nosplash -noactivate \
+            >"$work/warmup.log" 2>&1 &
+          warmup_pid=$!
+          sleep 20
+          kill "$warmup_pid" 2>/dev/null || true
+          for _ in {1..10}; do
+            if ! kill -0 "$warmup_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          kill -9 "$warmup_pid" 2>/dev/null || true
+          wait "$warmup_pid" 2>/dev/null || true
           "$app/Contents/MacOS/REAPER" \
             -newinst -cfgfile "$work/reaper.ini" -new -nosplash \
             "$GITHUB_WORKSPACE/tests/reaper_integration.lua" \
