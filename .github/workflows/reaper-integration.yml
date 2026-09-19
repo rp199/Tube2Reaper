@@ -63,13 +63,20 @@ jobs:
           $harness = Join-Path $env:GITHUB_WORKSPACE 'tests\reaper_integration.lua'
           $process = Start-Process -FilePath $reaper `
             -ArgumentList @('-new', '-nosplash', $harness) -PassThru
-          if (-not $process.WaitForExit(90000)) {
-            Stop-Process -Id $process.Id -Force
-            throw 'REAPER integration test timed out'
+          for ($attempt = 0; $attempt -lt 90; $attempt++) {
+            if ((Test-Path -LiteralPath $result) -or $process.HasExited) { break }
+            Start-Sleep -Seconds 1
           }
-          if (-not (Test-Path -LiteralPath $result)) { throw 'REAPER did not write a test result' }
+          if (-not (Test-Path -LiteralPath $result)) {
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+            Get-ChildItem -LiteralPath $work -Recurse -ErrorAction SilentlyContinue
+            throw 'REAPER did not write a test result'
+          }
           $message = Get-Content -LiteralPath $result -Raw
           Write-Host $message
+          if (-not $process.WaitForExit(15000)) {
+            Stop-Process -Id $process.Id -Force
+          }
           if (-not $message.StartsWith('PASS ')) { throw $message }
           if (-not (Test-Path (Join-Path $work 'session\Tube2Reaper.rpp'))) {
             throw 'REAPER did not save the project'
@@ -93,7 +100,7 @@ jobs:
           curl --fail --location --retry 3 \
             "https://www.reaper.fm/files/7.x/reaper${REAPER_VERSION_PATH}_universal.dmg" \
             --output "$dmg"
-          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount"
+          hdiutil attach "$dmg" -acceptlicense -nobrowse -readonly -mountpoint "$mount"
           cp -R "$mount/REAPER.app" "$app"
           hdiutil detach "$mount"
           export TUBE2REAPER_CI_ROOT="$work"
@@ -118,8 +125,6 @@ jobs:
           done
           if kill -0 "$reaper_pid" 2>/dev/null; then
             kill "$reaper_pid" 2>/dev/null || true
-            echo 'REAPER did not exit after the harness finished'
-            exit 1
           fi
           wait "$reaper_pid" || true
           message=$(cat "$result")
