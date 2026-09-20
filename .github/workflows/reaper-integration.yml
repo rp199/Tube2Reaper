@@ -144,10 +144,9 @@ jobs:
           done
           kill -9 "$warmup_pid" 2>/dev/null || true
           wait "$warmup_pid" 2>/dev/null || true
-          mkdir -p "$work/Scripts"
-          cp "$GITHUB_WORKSPACE/tests/reaper_integration.lua" "$work/Scripts/__startup.lua"
           "$app/Contents/MacOS/REAPER" \
             -newinst -cfgfile "$work/reaper.ini" -new -nosplash \
+            "$GITHUB_WORKSPACE/tests/reaper_integration.lua" \
             >"$work/reaper.log" 2>&1 &
           reaper_pid=$!
           for _ in {1..90}; do
