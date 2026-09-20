@@ -153,8 +153,8 @@ Tube2Reaper does not sign in to YouTube or read browser cookies. Closing the
 window does not currently stop a download already in progress. Download only
 material you have permission to use.
 
-Real REAPER project creation is automatically tested on macOS and Windows.
-Linux has not yet been tested.
+Real REAPER project creation is automatically tested on Windows and has been
+verified locally on macOS. Linux has not yet been tested.
 
 ## Update
 
