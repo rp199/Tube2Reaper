@@ -127,12 +127,8 @@ jobs:
           cp -R "$mount/REAPER.app" "$app"
           hdiutil detach "$mount"
           now=$(date +%s)
-          printf '[REAPER]\nlastproject=\ncoreaudioindevnew=<none>\ncoreaudiooutdevnew=<none>\n[verchk]\nlastt=%s\n' "$now" \
+          printf '[REAPER]\nlastproject=\ncoreaudioindevnew=<default system devices>\ncoreaudiooutdevnew=<default system devices>\n[verchk]\nlastt=%s\n' "$now" \
             >"$work/reaper.ini"
-          resource="$HOME/Library/Application Support/REAPER"
-          mkdir -p "$resource/Scripts"
-          cp "$GITHUB_WORKSPACE/tests/reaper_integration.lua" "$resource/Scripts/__startup.lua"
-          cp "$work/reaper.ini" "$resource/reaper.ini"
           export TUBE2REAPER_MODULE_ROOT="$GITHUB_WORKSPACE"
           export TUBE2REAPER_CI_ROOT="$work"
           export TUBE2REAPER_CI_RESULT="$result"
@@ -148,6 +144,8 @@ jobs:
           done
           kill -9 "$warmup_pid" 2>/dev/null || true
           wait "$warmup_pid" 2>/dev/null || true
+          mkdir -p "$work/Scripts"
+          cp "$GITHUB_WORKSPACE/tests/reaper_integration.lua" "$work/Scripts/__startup.lua"
           "$app/Contents/MacOS/REAPER" \
             -newinst -cfgfile "$work/reaper.ini" -new -nosplash \
             >"$work/reaper.log" 2>&1 &
