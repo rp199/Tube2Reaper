@@ -127,7 +127,7 @@ jobs:
           cp -R "$mount/REAPER.app" "$app"
           hdiutil detach "$mount"
           now=$(date +%s)
-          printf '[REAPER]\nlastproject=\n[verchk]\nlastt=%s\n[audioconfig]\nmode=0\n' "$now" \
+          printf '[REAPER]\nlastproject=\ncoreaudioindevnew=<none>\ncoreaudiooutdevnew=<none>\n[verchk]\nlastt=%s\n' "$now" \
             >"$work/reaper.ini"
           resource="$HOME/Library/Application Support/REAPER"
           mkdir -p "$resource/Scripts"
@@ -154,8 +154,6 @@ jobs:
           reaper_pid=$!
           for _ in {1..90}; do
             if [[ -f "$result" ]] || ! kill -0 "$reaper_pid" 2>/dev/null; then break; fi
-            osascript -e 'tell application "REAPER" to activate' \
-              -e 'tell application "System Events" to key code 36' >/dev/null 2>&1 || true
             sleep 1
           done
           if [[ ! -f "$result" ]]; then
