@@ -6,7 +6,7 @@ for _,case in ipairs({
   {mode='review',bpm=128,expected=135,prompts=1,accessors=1},
   {mode='skip',bpm=128,expected=120,prompts=0,accessors=0},
 }) do
-  local saved,prompts,accessors,bpm,inserted=0,0,0,nil,nil
+  local saved,prompts,accessors,bpm,inserted,item_position=0,0,0,nil,nil,nil
   local deferred, key=nil,108
   local noop=function() end
   reaper=setmetatable({
@@ -27,6 +27,7 @@ for _,case in ipairs({
     GetAudioAccessorEndTime=function() return 0 end,
     new_array=function() return {} end,
     SetCurrentBPM=function(_,value) bpm=value end,
+    SetMediaItemInfo_Value=function(_,key,value) if key=='D_POSITION' then item_position=value end end,
     Main_SaveProjectEx=function() saved=saved+1 end,
     GetUserInputs=function() prompts=prompts+1; return true,'135' end,
     MB=function(err) error(err) end,
@@ -38,6 +39,8 @@ for _,case in ipairs({
   dofile=function(path)
     if path:match('/tempo.lua$') then return {
       estimate=function() return case.bpm,0.9 end,
+      first_onset=function() return case.bpm and 0.25 or nil end,
+      alignment_shift=function(onset,value) return onset and 60/value-onset or nil end,
       round=function(value) value=tonumber(value);return value and math.floor(value+0.5) end,
     } end
     if path:match('/ui.lua$') then return {draw=noop,
@@ -52,6 +55,11 @@ for _,case in ipairs({
   assert(prompts==case.prompts,case.mode..': wrong confirmation behavior')
   assert(accessors==case.accessors,case.mode..': wrong analysis behavior')
   assert(bpm==case.expected,case.mode..': wrong resulting tempo')
+  if case.mode=='skip' or not case.bpm then
+    assert(item_position==nil,case.mode..': should not align without an estimate')
+  else
+    assert(item_position and item_position>0,case.mode..': should align the first onset')
+  end
   assert(inserted and inserted:match('/ImportedAudio%.wav$'),case.mode..': imported media filename is not generic')
   dofile=real_dofile
 end

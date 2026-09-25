@@ -58,7 +58,7 @@ You can also assign it a keyboard shortcut from the Action List.
 1. Run Tube2Reaper from REAPER's Action List.
 2. Choose **Automatic**, **Review BPM**, or **Off** for tempo detection.
 3. Search by song or artist, paste a YouTube link, or choose a local audio file.
-4. Select a result. Use **Open** first if you want to check it in your browser.
+4. Choose **Import** beside a result, or **Open in browser** to check it first.
 5. Record into the empty **Recording** track in the new project tab.
 
 Your existing project tabs stay open. Tube2Reaper saves the new project
@@ -73,7 +73,9 @@ decodes it to WAV without adding another lossy encoding step. Tube2Reaper then:
 2. Copies the audio into its own session folder.
 3. Adds the audio and an empty **Recording** track.
 4. Analyzes up to the first 90 seconds when tempo detection is enabled.
-5. Applies a whole-number BPM and saves the project with relative media paths.
+5. Applies a whole-number BPM and aligns the first strong note to the beat grid
+   without trimming any audio.
+6. Saves the project with relative media paths.
 
 Sessions are stored in REAPER's resource folder:
 
@@ -145,9 +147,10 @@ download page.
 | BPM sounds half or double | Use **Review BPM** or change the project tempo in REAPER. |
 | An update does not appear | Close the Tube2Reaper window and run the action again. |
 
-Tempo detection works best with a clear, steady beat. Intros, live drums, tempo
-changes, and half/double-time interpretations can confuse it. The imported audio
-is time-based, so changing the project BPM does not stretch it automatically.
+Tempo detection and first-note alignment work best with a clear, steady beat.
+Quiet fade-ins, pickups, live drums, tempo changes, and half/double-time
+interpretations can confuse them. The imported audio is time-based, so changing
+the project BPM does not stretch it automatically.
 
 Tube2Reaper does not sign in to YouTube or read browser cookies. Closing the
 window does not currently stop a download already in progress. Download only

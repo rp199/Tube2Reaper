@@ -212,17 +212,21 @@ function M.draw(state, actions)
   for row=1,visible do
     local result=state.results[row+scroll]; if not result then break end
     local y=top+(row-1)*48
-    local hover=inside(24,y,w-48,42) and not busy
-    rect(24,y,w-48,42,hover and 'hover' or 'panel')
+    rect(24,y,w-48,42,'panel')
     text(36,y+13,string.format('%02d',row+scroll),'muted',14)
-    text(72,y+12,result.title,busy and 'muted' or 'text',16,w-275)
-    text(w-184,y+13,M.duration(result.duration),'muted',14)
-    local open_x,open_y,open_w,open_h=w-112,y+5,76,32
-    local open_hover=inside(open_x,open_y,open_w,open_h) and not busy
-    rect(open_x,open_y,open_w,open_h,open_hover and 'accent' or 'hover')
-    centered_text(open_x,open_y,open_w,open_h,'Open',open_hover and 'dark' or 'text',14)
-    if click and open_hover then actions.open(result)
-    elseif click and hover then actions.download(result) end
+    text(72,y+12,result.title,busy and 'muted' or 'text',16,w-430)
+    text(w-344,y+13,M.duration(result.duration),'muted',14)
+    local browser_x,browser_y,browser_w,browser_h=w-272,y+5,132,32
+    local import_x,import_y,import_w,import_h=w-132,y+5,96,32
+    local browser_hover=inside(browser_x,browser_y,browser_w,browser_h) and not busy
+    local import_hover=inside(import_x,import_y,import_w,import_h) and not busy
+    rect(browser_x,browser_y,browser_w,browser_h,browser_hover and 'hover' or 'background')
+    centered_text(browser_x,browser_y,browser_w,browser_h,'Open in browser',
+      browser_hover and 'text' or 'muted',13)
+    rect(import_x,import_y,import_w,import_h,import_hover and 'accent' or 'hover')
+    centered_text(import_x,import_y,import_w,import_h,'Import',import_hover and 'dark' or 'text',14)
+    if click and browser_hover then actions.open(result)
+    elseif click and import_hover then actions.download(result) end
   end
   rect(0,h-65,w,65,'panel')
   text(24,h-46,state.status,busy and 'accent' or 'text',14,w-48)

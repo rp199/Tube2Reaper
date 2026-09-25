@@ -1,5 +1,5 @@
 -- @description Tube2Reaper - search, import and prepare an audio session
--- @version 0.3.0
+-- @version 0.4.0
 -- @author Tube2Reaper
 local root = debug.getinfo(1, 'S').source:sub(2):match('^(.*)[/\\]')
 local tempo = dofile(root..'/lua/tempo.lua')
@@ -48,13 +48,25 @@ local function save_session()
   state.status = state.completion or 'Session saved. Ready to record.'
   state.analysis = nil
 end
+local function align_item(bpm)
+  local onset=state.analysis and tempo.first_onset(state.analysis.envelope,100)
+  local shift=tempo.alignment_shift(onset,bpm)
+  if shift and shift>0 then
+    reaper.SetMediaItemInfo_Value(state.item,'D_POSITION',shift)
+    reaper.UpdateArrange()
+  end
+  return shift
+end
 local function finish_analysis(bpm, confidence)
   reaper.DestroyAudioAccessor(state.accessor); state.accessor = nil
   bpm=tempo.round(bpm)
   if state.tempo_mode ~= 'review' then
     if bpm then
       reaper.SetCurrentBPM(state.project, bpm, false)
-      state.completion=string.format('Session saved at %d BPM. Ready to record.', bpm)
+      local shift=align_item(bpm)
+      state.completion=shift and shift>0 and
+        string.format('Session saved at %d BPM. First strong note aligned to the grid.',bpm) or
+        string.format('Session saved at %d BPM. Ready to record.', bpm)
     else
       state.completion='Session saved at 120 BPM. No reliable tempo detected; adjust it in REAPER.'
     end
@@ -67,7 +79,10 @@ local function finish_analysis(bpm, confidence)
   local chosen = tempo.round(value)
   if ok and chosen and chosen >= 20 and chosen <= 400 then
     reaper.SetCurrentBPM(state.project, chosen, false)
-    state.completion=string.format('Session saved at %d BPM. Ready to record.', chosen)
+    local shift=align_item(chosen)
+    state.completion=shift and shift>0 and
+      string.format('Session saved at %d BPM. First strong note aligned to the grid.',chosen) or
+      string.format('Session saved at %d BPM. Ready to record.', chosen)
   else
     state.completion='Session saved at 120 BPM. Tempo review was skipped.'
   end
@@ -79,6 +94,7 @@ local function import_audio(path, title, session_directory)
   state.session = session_directory or folder('sessions')
   local created=session_builder.create(reaper,path,title,state.session)
   state.project=created.project
+  state.item=created.item
   local take=created.take
   if state.tempo_mode == 'skip' then
     state.completion='Session saved at 120 BPM. Tempo detection is off.'
@@ -126,7 +142,7 @@ local function search()
       local id, duration, title=line:match('^([%w_-]+)\t([^\t]+)\t(.*)$')
       if id then state.results[#state.results+1]={id=id,title=title,duration=duration} end
     end
-    state.status=#state.results..' results. Click a song to download and create its session.'
+    state.status=#state.results..' results. Choose Import to create a REAPER session.'
   end)
 end
 local function open_youtube(result)
