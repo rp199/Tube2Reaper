@@ -101,6 +101,3 @@ jobs:
             Stop-Process -Id $process.Id -Force
           }
           if (-not $message.StartsWith('PASS ')) { throw $message }
-          if (-not (Test-Path (Join-Path $work 'session\Tube2Reaper.rpp'))) {
-            throw 'REAPER did not save the project'
-          }

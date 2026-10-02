@@ -2,11 +2,13 @@
 local real_dofile=dofile
 for _,case in ipairs({
   {mode='auto',bpm=120.0007,expected=120,prompts=0,accessors=1},
-  {mode='auto',expected=120,prompts=0,accessors=1},
+  {mode='auto',prompts=0,accessors=1},
   {mode='review',bpm=128,expected=135,prompts=1,accessors=1},
-  {mode='skip',bpm=128,expected=120,prompts=0,accessors=0},
+  {mode='review',bpm=128,cancel=true,prompts=1,accessors=1},
+  {mode='skip',bpm=128,prompts=0,accessors=0},
 }) do
   local saved,prompts,accessors,bpm,inserted,item_position=0,0,0,nil,nil,nil
+  local project_commands,cursor_resets=0,0
   local deferred, key=nil,108
   local noop=function() end
   reaper=setmetatable({
@@ -26,10 +28,13 @@ for _,case in ipairs({
     GetAudioAccessorStartTime=function() return 0 end,
     GetAudioAccessorEndTime=function() return 0 end,
     new_array=function() return {} end,
+    GetMediaItemInfo_Value=function(_,key) if key=='D_POSITION' then return 2 end return 0 end,
     SetCurrentBPM=function(_,value) bpm=value end,
     SetMediaItemInfo_Value=function(_,key,value) if key=='D_POSITION' then item_position=value end end,
     Main_SaveProjectEx=function() saved=saved+1 end,
-    GetUserInputs=function() prompts=prompts+1; return true,'135' end,
+    Main_OnCommand=function() project_commands=project_commands+1 end,
+    SetEditCurPos=function() cursor_resets=cursor_resets+1 end,
+    GetUserInputs=function() prompts=prompts+1; return not case.cancel,'135' end,
     MB=function(err) error(err) end,
     defer=function(fn) deferred=fn end,
   },{__index=function() return noop end})
@@ -50,17 +55,19 @@ for _,case in ipairs({
   local ok,err=pcall(real_dofile,'./Tube2Reaper.lua')
   io.open=original_open
   assert(ok,err)
-  if deferred and saved==0 then deferred() end
-  assert(saved==1,case.mode..': should save once')
+  if deferred and case.mode~='skip' then deferred() end
+  assert(saved==0,case.mode..': must not save the current project')
+  assert(project_commands==0,case.mode..': must not create a project tab')
+  assert(cursor_resets==0,case.mode..': must not move the edit cursor')
   assert(prompts==case.prompts,case.mode..': wrong confirmation behavior')
   assert(accessors==case.accessors,case.mode..': wrong analysis behavior')
   assert(bpm==case.expected,case.mode..': wrong resulting tempo')
-  if case.mode=='skip' or not case.bpm then
+  if case.mode=='skip' or not case.bpm or case.cancel then
     assert(item_position==nil,case.mode..': should not align without an estimate')
   else
     assert(item_position and item_position>0,case.mode..': should align the first onset')
   end
-  assert(inserted and inserted:match('/ImportedAudio%.wav$'),case.mode..': imported media filename is not generic')
+  assert(inserted=='test.wav',case.mode..': local audio should be imported from its original path')
   dofile=real_dofile
 end
 print('Tempo modes passed: automatic, fallback, review, and analysis off')

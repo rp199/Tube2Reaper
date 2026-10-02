@@ -1,5 +1,5 @@
--- @description Tube2Reaper - search, import and prepare an audio session
--- @version 0.4.0
+-- @description Tube2Reaper - search and import audio into the current project
+-- @version 0.5.0
 -- @author Tube2Reaper
 local root = debug.getinfo(1, 'S').source:sub(2):match('^(.*)[/\\]')
 local tempo = dofile(root..'/lua/tempo.lua')
@@ -43,16 +43,27 @@ local function start_job(args, callback)
   state.error=nil
   state.job = jobs.start(folder('jobs'), args); state.callback = callback
 end
-local function save_session()
-  session_builder.save(reaper,state.project,state.session)
-  state.status = state.completion or 'Session saved. Ready to record.'
+local function complete(message)
+  state.status=message or 'Audio imported into the current project.'
   state.analysis = nil
 end
 local function align_item(bpm)
   local onset=state.analysis and tempo.first_onset(state.analysis.envelope,100)
   local shift=tempo.alignment_shift(onset,bpm)
+  if onset and reaper.TimeMap2_timeToQN and reaper.TimeMap2_QNToTime then
+    local target=state.item_position+onset
+    local qn=reaper.TimeMap2_timeToQN(state.project,target)
+    if type(qn)=='number' then
+      local aligned=reaper.TimeMap2_QNToTime(state.project,math.ceil(qn-1e-7))
+      local candidate=type(aligned)=='number' and aligned-target or nil
+      if candidate and candidate>=0 then
+        local beat=60/bpm
+        shift=(candidate<0.03 or beat-candidate<0.03) and 0 or candidate
+      end
+    end
+  end
   if shift and shift>0 then
-    reaper.SetMediaItemInfo_Value(state.item,'D_POSITION',shift)
+    reaper.SetMediaItemInfo_Value(state.item,'D_POSITION',state.item_position+shift)
     reaper.UpdateArrange()
   end
   return shift
@@ -64,13 +75,13 @@ local function finish_analysis(bpm, confidence)
     if bpm then
       reaper.SetCurrentBPM(state.project, bpm, false)
       local shift=align_item(bpm)
-      state.completion=shift and shift>0 and
-        string.format('Session saved at %d BPM. First strong note aligned to the grid.',bpm) or
-        string.format('Session saved at %d BPM. Ready to record.', bpm)
+      complete(shift and shift>0 and
+        string.format('Audio imported at %d BPM. First strong note aligned to the grid.',bpm) or
+        string.format('Audio imported. Project tempo set to %d BPM.',bpm))
     else
-      state.completion='Session saved at 120 BPM. No reliable tempo detected; adjust it in REAPER.'
+      complete('Audio imported. No reliable tempo detected; project tempo was not changed.')
     end
-    save_session(); return
+    return
   end
   local label = bpm and string.format('Estimated %d BPM (periodicity %.2f).', bpm, confidence) or
     'No reliable tempo found.'
@@ -80,25 +91,22 @@ local function finish_analysis(bpm, confidence)
   if ok and chosen and chosen >= 20 and chosen <= 400 then
     reaper.SetCurrentBPM(state.project, chosen, false)
     local shift=align_item(chosen)
-    state.completion=shift and shift>0 and
-      string.format('Session saved at %d BPM. First strong note aligned to the grid.',chosen) or
-      string.format('Session saved at %d BPM. Ready to record.', chosen)
+    complete(shift and shift>0 and
+      string.format('Audio imported at %d BPM. First strong note aligned to the grid.',chosen) or
+      string.format('Audio imported. Project tempo set to %d BPM.',chosen))
   else
-    state.completion='Session saved at 120 BPM. Tempo review was skipped.'
+    complete('Audio imported. Tempo review was cancelled; project tempo was not changed.')
   end
-  save_session()
 end
-local function import_audio(path, title, session_directory)
+local function import_audio(path, title)
   state.error=nil
-  state.completion=nil
-  state.session = session_directory or folder('sessions')
-  local created=session_builder.create(reaper,path,title,state.session)
+  local created=session_builder.add(reaper,path,title)
   state.project=created.project
   state.item=created.item
+  state.item_position=reaper.GetMediaItemInfo_Value(created.item,'D_POSITION')
   local take=created.take
   if state.tempo_mode == 'skip' then
-    state.completion='Session saved at 120 BPM. Tempo detection is off.'
-    save_session(); return
+    complete('Audio imported. Project tempo was not changed.'); return
   end
   state.accessor = assert(reaper.CreateTakeAudioAccessor(take), 'Cannot access audio samples')
   local start = reaper.GetAudioAccessorStartTime(state.accessor)
@@ -109,7 +117,7 @@ end
 local function analysis_step()
   local a = state.analysis
   if reaper.EnumProjects(-1, '') ~= state.project then
-    state.status = 'Select the new Tube2Reaper project tab to continue analysis.'; return
+    state.status = 'Return to the project containing the imported audio to continue analysis.'; return
   end
   if a.position >= a.finish then
     local bpm, confidence = tempo.estimate(a.envelope, 100)
@@ -142,7 +150,7 @@ local function search()
       local id, duration, title=line:match('^([%w_-]+)\t([^\t]+)\t(.*)$')
       if id then state.results[#state.results+1]={id=id,title=title,duration=duration} end
     end
-    state.status=#state.results..' results. Choose Import to create a REAPER session.'
+    state.status=#state.results..' results. Choose Import to add audio to the current project.'
   end)
 end
 local function open_youtube(result)
@@ -152,14 +160,14 @@ local function open_youtube(result)
   state.status='Opened video in your browser.'
 end
 local function download(result)
-  local args=base_args(); local session=folder('sessions')
+  local args=base_args(); local directory=folder('downloads')
   local ffmpeg=tool('ffmpeg')
   assert(ffmpeg, 'FFmpeg missing. See README.md for YouTube helper setup.')
   for _,v in ipairs({'--ffmpeg-location', ffmpeg, '-f', 'bestaudio/best', '-x',
-    '--audio-format', 'wav', '--no-progress', '-o', session..'/ImportedAudio.%(ext)s',
+    '--audio-format', 'wav', '--no-progress', '-o', directory..'/ImportedAudio.%(ext)s',
     '--', 'https://www.youtube.com/watch?v='..result.id}) do args[#args+1]=v end
   state.status='Downloading '..result.title..'…'
-  start_job(args, function() import_audio(session..'/ImportedAudio.wav', result.title, session) end)
+  start_job(args, function() import_audio(directory..'/ImportedAudio.wav', result.title) end)
 end
 local function local_file()
   local ok,path=reaper.GetUserFileNameForRead('', 'Choose an audio file', '')

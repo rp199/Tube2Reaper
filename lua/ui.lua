@@ -131,7 +131,7 @@ function M.draw(state, actions)
   previous_mouse=gfx.mouse_cap
   local busy=state.job~=nil or state.analysis~=nil
   text(24,20,'Tube2Reaper','text',28)
-  text(24,56,'Your next session starts here.','muted',16)
+  text(24,56,'Add audio to the current project.','muted',16)
   local field_width=w-170
   rect(24,91,field_width,44,'panel')
   if focused and not busy then rect(24,133,field_width,2,'accent') end
@@ -184,9 +184,9 @@ function M.draw(state, actions)
     button(24+(i-1)*(mw+8),221,mw,36,mode[2],click,
       function() actions.mode(mode[1]) end,busy,state.tempo_mode==mode[1])
   end
-  local descriptions={auto='Detect BPM and save automatically. No confirmation needed.',
-    review='Detect BPM, then let you check or edit it before saving.',
-    skip='Skip tempo analysis. Create the session at 120 BPM.'}
+  local descriptions={auto='Detect BPM and apply it automatically. No confirmation needed.',
+    review='Detect BPM, then let you check or edit it before applying it.',
+    skip='Import audio without changing the project tempo.'}
   text(24,269,descriptions[state.tempo_mode],'muted',14,w-48)
   rect(24,300,w-48,1,'line')
   text(24,318,#state.results>0 and 'CHOOSE A TRACK' or 'IMPORT AUDIO','muted',12)
@@ -207,7 +207,7 @@ function M.draw(state, actions)
   scroll=math.max(0,math.min(scroll,math.max(0,#state.results-visible)))
   if #state.results==0 and bottom>top+60 then
     text(24,top+20,'Find a song, or bring your own audio.','text',20,w-48)
-    text(24,top+55,'Start a project with your audio and an empty recording track.','muted',14,w-48)
+    text(24,top+55,'A single audio track is added at the current edit cursor.','muted',14,w-48)
   end
   for row=1,visible do
     local result=state.results[row+scroll]; if not result then break end

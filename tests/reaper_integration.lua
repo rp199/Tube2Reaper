@@ -39,35 +39,32 @@ end
 local function run()
   reaper.RecursiveCreateDirectory(work,0)
   local fixture=work..'/source-fixture.wav'
-  local directory=work..'/session'
   write_fixture(fixture)
 
-  local created=session.create(reaper,fixture,'CI Fixture',directory)
+  local project,project_path_before=reaper.EnumProjects(-1,'')
+  reaper.SetCurrentBPM(project,137,false)
+  reaper.SetEditCurPos(1.25,false,false)
+  reaper.InsertTrackAtIndex(0,true)
+  local existing=reaper.GetTrack(project,0)
+  reaper.GetSetMediaTrackInfo_String(existing,'P_NAME','Existing track',true)
+  local _,record_path_before=reaper.GetSetProjectInfo_String(project,'RECORD_PATH','',false)
+
+  local created=session.add(reaper,fixture,'CI Fixture')
   assert_equal(reaper.EnumProjects(-1,''),created.project,'active project')
+  assert_equal(select(2,reaper.EnumProjects(-1,'')),project_path_before,'project path')
   assert_equal(reaper.CountTracks(created.project),2,'track count')
   assert_equal(select(2,reaper.GetSetMediaTrackInfo_String(
-    reaper.GetTrack(created.project,0),'P_NAME','',false)),'CI Fixture','imported track name')
+    reaper.GetTrack(created.project,0),'P_NAME','',false)),'Existing track','existing track name')
   assert_equal(select(2,reaper.GetSetMediaTrackInfo_String(
-    reaper.GetTrack(created.project,1),'P_NAME','',false)),'Recording','recording track name')
+    reaper.GetTrack(created.project,1),'P_NAME','',false)),'CI Fixture','imported track name')
   assert_equal(reaper.CountMediaItems(created.project),1,'media item count')
   assert_equal(reaper.GetMediaItemInfo_Value(created.item,'C_BEATATTACHMODE'),0,'item timebase')
+  assert_equal(reaper.GetMediaItemInfo_Value(created.item,'D_POSITION'),1.25,'item position')
+  assert_equal(math.floor(reaper.Master_GetTempo()+0.5),137,'unchanged project tempo')
   assert_equal(select(2,reaper.GetSetProjectInfo_String(
-    created.project,'RECORD_PATH','',false)),'Recordings','recording path')
-  assert_equal(math.floor(reaper.Master_GetTempo()+0.5),120,'project tempo')
-  assert(reaper.file_exists(created.target),'session audio was not copied')
-
-  local project_path=session.save(reaper,created.project,directory)
-  assert(reaper.file_exists(project_path),'project was not saved')
-  local project_file=assert(io.open(project_path,'rb'))
-  local project_text=project_file:read('*a')
-  project_file:close()
-  assert(project_text:find('ImportedAudio.wav',1,true),'saved project does not reference session audio')
-  assert(not project_text:find('source-fixture.wav',1,true),'saved project references the original fixture')
-  local recordings=io.open(directory..'/Recordings/.tube2reaper-ci','wb')
-  assert(recordings,'recording directory was not created')
-  recordings:close()
-  os.remove(directory..'/Recordings/.tube2reaper-ci')
-  write_result('PASS '..project_path)
+    created.project,'RECORD_PATH','',false)),record_path_before,'unchanged recording path')
+  assert_equal(created.path,fixture,'original media path')
+  write_result('PASS current-project import')
 end
 
 local ok,err=xpcall(run,debug.traceback)

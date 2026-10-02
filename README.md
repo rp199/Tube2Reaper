@@ -2,11 +2,11 @@
 
 [![REAPER integration](https://github.com/rp199/Tube2Reaper/actions/workflows/reaper-integration.yml/badge.svg)](https://github.com/rp199/Tube2Reaper/actions/workflows/reaper-integration.yml)
 
-Turn a YouTube video or local audio file into a ready-to-record
+Add audio from a YouTube video or local file to your current
 [REAPER](https://www.reaper.fm/) project.
 
-Tube2Reaper searches or imports audio, optionally estimates its BPM, creates a
-new project tab, adds a **Recording** track, and saves everything together.
+Tube2Reaper searches or imports audio, optionally estimates its BPM, and adds one
+audio track without creating a project or assuming how you intend to use it.
 
 ## Quick start
 
@@ -59,35 +59,32 @@ You can also assign it a keyboard shortcut from the Action List.
 2. Choose **Automatic**, **Review BPM**, or **Off** for tempo detection.
 3. Search by song or artist, paste a YouTube link, or choose a local audio file.
 4. Choose **Import** beside a result, or **Open in browser** to check it first.
-5. Record into the empty **Recording** track in the new project tab.
+5. Continue working in the same project.
 
-Your existing project tabs stay open. Tube2Reaper saves the new project
-automatically.
+The audio is inserted on a new track at the current edit cursor. Tube2Reaper does
+not save, rename, or otherwise replace your project.
 
 ## How it works
 
 For YouTube, yt-dlp finds and downloads the best available audio, and FFmpeg
 decodes it to WAV without adding another lossy encoding step. Tube2Reaper then:
 
-1. Creates a new REAPER project tab.
-2. Copies the audio into its own session folder.
-3. Adds the audio and an empty **Recording** track.
-4. Analyzes up to the first 90 seconds when tempo detection is enabled.
-5. Applies a whole-number BPM and aligns the first strong note to the beat grid
-   without trimming any audio.
-6. Saves the project with relative media paths.
+1. Adds one audio track to the current project at the edit cursor.
+2. Analyzes up to the first 90 seconds when tempo detection is enabled.
+3. When detection succeeds, applies a whole-number BPM and aligns the first
+   strong note to the beat grid without trimming any audio.
+4. Leaves saving and all other project setup to you.
 
-Sessions are stored in REAPER's resource folder:
+Downloaded YouTube audio is retained in REAPER's resource folder so the project
+can continue referencing it:
 
 ```text
-Tube2Reaper/sessions/<unique-session>/
-  Tube2Reaper.rpp
-  ImportedAudio.<extension>
-  Recordings/
+Tube2Reaper/downloads/<unique-download>/
+  ImportedAudio.wav
 ```
 
-YouTube audio is saved as WAV; local audio keeps its original format. Move or
-back up the whole session folder to keep the project and media together.
+Local files are imported from their existing location. Use REAPER's normal media
+management if you want to copy imported media into your project folder.
 
 ## Manual YouTube helper setup
 
@@ -143,7 +140,7 @@ download page.
 | Windows setup fails | Check your internet connection, then run `Install-Windows.cmd` again. Partial downloads are not installed. |
 | A download fails | Update the helpers and try another video. Some videos are unavailable or require sign-in. |
 | macOS blocks a helper | Approve that executable through the normal macOS security settings. |
-| Tempo analysis pauses | Return to the newly created project tab. |
+| Tempo analysis pauses | Return to the project containing the imported audio. |
 | BPM sounds half or double | Use **Review BPM** or change the project tempo in REAPER. |
 | An update does not appear | Close the Tube2Reaper window and run the action again. |
 
@@ -156,8 +153,8 @@ Tube2Reaper does not sign in to YouTube or read browser cookies. Closing the
 window does not currently stop a download already in progress. Download only
 material you have permission to use.
 
-Real REAPER project creation is automatically tested on Windows and has been
-verified locally on macOS. Linux has not yet been tested.
+Importing into the current REAPER project is automatically tested on Windows and
+has been verified locally on macOS. Linux has not yet been tested.
 
 ## Update
 
